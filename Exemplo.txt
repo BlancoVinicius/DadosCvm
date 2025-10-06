@@ -1,0 +1,128 @@
+Estrutura de Pastas Sugerida
+CVM/
+├─ src/
+│  └─ dados_cvm/              # nome do pacote (ajustável)
+│     ├─ __init__.py
+│     ├─ client.py            # API de alto nível (CVMClient)
+│     ├─ endpoints.py         # enums/constantes e helpers de URL
+│     ├─ download.py          # ZipDownloader (HTTP + retries + validação)
+│     ├─ extract.py           # ZipExtractor (extração segura)
+│     ├─ read.py              # CSVReader (pandas/chunks/dtypes)
+│     ├─ normalize.py         # Normalizadores (DFP, DRE, etc.)
+│     ├─ models.py            # dataclasses p/ metadados (empresa, exercício, etc.)
+│     ├─ utils.py             # paths, logging, cache, validações
+│     └─ cli.py               # interface de linha de comando
+├─ tests/
+│  ├─ test_client.py
+│  ├─ test_download.py
+│  ├─ test_extract.py
+│  ├─ test_read.py
+│  └─ data/                   # amostras pequenas para teste
+├─ examples/
+│  ├─ exemplo_uso_basico.py
+│  └─ notebooks/
+│     └─ analise.ipynb        # mover seu notebook para cá
+├─ scripts/
+│  └─ main.py                 # seu atual [main.py](cci:7://file:///c:/Users/141627/Desktop/Arquivos/Projeto/teste/CVM/main.py:0:0-0:0) migrado como script de exemplo
+├─ README.md
+├─ pyproject.toml             # build/metadata do pacote
+├─ requirements.txt
+└─ .env.example               # se precisar de configs (proxys, etc.)
+[nome do pacote]: sugiro dados_cvm ou cvm_finance. Posso ajustar conforme sua preferência.
+Classes e Módulos (Responsabilidades)
+endpoints.py
+DocType (Enum): DFP, CIA, ITR (se for expandir depois).
+StatementType (Enum): BPA, BPP, DRE, DFC_MD, DFC_MI, DMPL, DRA, DVA.
+Scope (Enum): CON, IND.
+UrlBuilder: build_zip_url(doc_type, ano) e helpers para nome de arquivo padrão.
+download.py
+ZipDownloader:
+download_zip(doc_type: DocType, ano: int) -> BytesIO
+Retries exponenciais, response.raise_for_status(), verificação de tamanho/MIME.
+extract.py
+ZipExtractor:
+list_csv(zip_bytes) -> list[str]
+extract_all(zip_bytes, dest_dir: Path) -> None
+Hardening: path traversal (sanitize paths), criação segura de diretórios.
+read.py
+CSVReader:
+read_csv(path, dtypes=None, chunksize=None, usecols=None) -> DataFrame | Iterator[DataFrame]
+Presets de dtypes/usecols por StatementType.
+Otimizações para arquivos grandes (chunks, categorias, parse_dates).
+normalize.py
+DFPNormalizer (e/ou normalizadores por demonstrativo):
+Padroniza nomes de colunas (snake_case, sem acentos).
+Converte tipos (datas, numéricos).
+Campos-chave: cnpj_cia, dt_referencia, vl_conta, cd_conta, ds_conta, escopo.
+CompanyMapper (opcional):
+Mapeamento CNPJ ↔ ticker se você integrar outra base (B3).
+models.py
+Company, Filing, Statement (dataclasses) para metadados e validações simples.
+client.py
+CVMClient (API de alto nível):
+get_dfp(ano, extrair=True) -> Path | None
+load_statement(ano, statement: StatementType, scope: Scope, chunks=False)
+Esconde detalhes de URL, download, extração e leitura.
+Pode implementar cache em disco (.cache/) por ano/tipo.
+cli.py
+Comandos:
+dados-cvm download --doc dfp --ano 2024 --dest ./arquivos
+dados-cvm listar --doc dfp --ano 2024
+dados-cvm ler --doc dfp --ano 2024 --statement DRE --scope CON --chunks
+Usa argparse ou typer (recomendado).
+utils.py
+Gestão de paths (get_data_dir(), ensure_dir()), logging configurável, validações.
+Como Migrar o Código Atual
+baixar_zip_cvm()
+ → mover para ZipDownloader.download_zip() em download.py.
+listar_csvs_zip()
+ → mover para ZipExtractor.list_csv() em extract.py.
+extrair_csv()
+ → mover para ZipExtractor.extract_all() em extract.py.
+main.py
+ → virar scripts/main.py como exemplo; uso via CVMClient.
+API de Uso (Exemplo)
+python
+from dados_cvm.client import CVMClient
+from dados_cvm.endpoints import DocType, StatementType, Scope
+
+client = CVMClient(data_dir="./arquivos")
+
+# Baixar e extrair DFP 2024
+client.get_dfp(ano=2024, extrair=True)
+
+# Ler DRE consolidado (CON) em chunks
+for chunk in client.load_statement(ano=2024, statement=StatementType.DRE, scope=Scope.CON, chunks=True):
+    # processar chunk (pandas.DataFrame)
+    pass
+Requisitos e Build
+requirements.txt
+:
+requests
+pandas
+typer ou argparse (se CLI)
+python-dotenv (se configs)
+pyproject.toml:
+Metadados (nome do pacote, versão, autores).
+packages = ["dados_cvm"] via src/.
+Console script: dados-cvm = dados_cvm.cli:app (se usar typer).
+Padrões de Dados e Performance
+[dtypes por demonstrativo]: pré-definir dtypes para reduzir memória.
+[chunksize]: leitura em blocos para CSVs grandes (DMPL, BPP, etc.).
+[normalização]: nomes de colunas consistentes, datas (%Y-%m-%d), valores numéricos com locale.
+[cache]: ~/.cache/dados_cvm/dfp/2024/ para ZIP e extraídos.
+Próximos Passos
+[decidir nome do pacote]: dados_cvm ou outro.
+[criar esqueleto src/ e pyproject.toml].
+[refatorar funções atuais para classes].
+[implementar CVMClient + CLI].
+[mover 
+analise.ipynb
+ para examples/notebooks/].
+Quer que eu gere o esqueleto inicial (pastas, arquivos vazios e assinaturas das classes) e mova o seu 
+main.py
+ para scripts/? Posso também preparar o pyproject.toml e um 
+requirements.txt
+ atualizado.
+
+Resumo: Propus uma estrutura modular em src/dados_cvm/ com classes separadas para download, extração, leitura, normalização e uma API CVMClient, além de CLI, testes e exemplos. Isso transforma seu projeto em uma lib reutilizável e escalável para tratar os dados da CVM.
