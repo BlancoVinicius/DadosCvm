@@ -12,7 +12,7 @@ __all__ = ["ZipDownloader"]
 
 
 class ZipDownloader:
-    """Responsável por baixar os arquivos ZIP da CVM com retries simples."""
+    """Responsável por baixar os arquivos ZIP da CVM."""
 
     DEFAULT_RETRIES: Final[int] = 3
     BACKOFF_SECONDS: Final[float] = 1.5
@@ -38,7 +38,7 @@ class ZipDownloader:
             BytesIO contendo o conteúdo do zip.
 
         Raises:
-            requests.HTTPError: quando a resposta HTTP não é 2xx.
+            requests.HTTPError: quando a solicitação HTTP não retorna sucesso.
             requests.RequestException: para outros erros de rede após esgotar retries.
         """
         url = UrlBuilder.build_zip_url(doc_type, ano)
@@ -48,26 +48,24 @@ class ZipDownloader:
         last_exc: Exception | None = None # variável para armazenar a última exceção
         for attempt in range(1, attempts + 1):
             try:
-                resp = requests.get(url, timeout=timeout_s)
-                resp.raise_for_status() # levanta exceção para códigos de erro HTTP
+                response = requests.get(url, timeout=timeout_s)
+                response.raise_for_status() # levanta exceção para códigos de erro HTTP
 
                 # Validação leve de conteúdo
-                content_type = resp.headers.get("Content-Type", "").lower() # pega o Content-Type da resposta
+                content_type = response.headers.get("Content-Type", "").lower() # pega o Content-Type da resposta
                 # Alguns servidores podem retornar octet-stream; aceitamos zip ou octet-stream
                 if "zip" not in content_type and "octet-stream" not in content_type:
                     # Ainda assim aceitamos se o conteúdo começar com bytes PK (assinatura de zip)
-                    if not resp.content.startswith(b"PK"):
+                    if not response.content.startswith(b"PK"):
                         raise requests.RequestException(
                             f"Conteúdo inesperado (Content-Type={content_type!r})."
                         )
 
-                return io.BytesIO(resp.content)
+                return io.BytesIO(response.content)
             except requests.HTTPError as e:
-                # Erros 4xx/5xx: decide retry para >=500; 4xx normalmente não resolve com retry
                 last_exc = e
                 status = getattr(e.response, "status_code", None)
                 if status is not None and 400 <= status < 500 and status != 429:
-                    # 4xx exceto 429: falha imediata
                     raise
             except requests.RequestException as e:
                 last_exc = e
