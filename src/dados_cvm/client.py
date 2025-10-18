@@ -10,7 +10,7 @@ from .endpoints import DocType, Scope, StatementType
 from .download import ZipDownloader
 from .extract import ZipExtractor
 
-from .read import CSVReader
+from .read import CSVReader 
 from .normalize import standardize_dataframe
 
 __all__ = ["CVMClient"]
@@ -55,7 +55,7 @@ class CVMClient:
     # -----------------------------
     # Download / Extração de DFP    
     # -----------------------------
-    def get_zip(self, ano: int, *, extrair: bool = True) -> io.BytesIO:
+    def get_zip(self, ano: int, doc_type: DocType, extrair: bool = True) -> io.BytesIO:
         """
         Baixa o arquivo ZIP em memória do Demonstrativo Financeiro solicitado (DFP/ITR/DRE) para o ano especificado e,
         opcionalmente, extrai o conteúdo para o diretório padrão.
@@ -73,7 +73,7 @@ class CVMClient:
 
                 caminho = client.get_dfp(2023, extrair=True)
         """
-        zip_bytes = ZipDownloader.download_zip(DocType.DFP, ano)
+        zip_bytes = ZipDownloader.download_zip(doc_type, ano)
         if extrair:
             ZipExtractor.extract_all(zip_bytes, self.path_data_dir)
         return zip_bytes
@@ -84,8 +84,9 @@ class CVMClient:
     def load_statement(
         self,
         ano: int,
-        statement: StatementType, # tipo do demonstrativo (ex.: DRE CON)
+        statement: StatementType, # tipo do demonstrativo (ex.: DRE)
         scope: Scope, # escopo do demonstrativo (ex.: CON, IND)
+        doc_type: DocType, # tipo do demonstrativo (ex.: DFP, ITR)
         chunks: bool = False,
         chunksize: int = 250_000,
         cols: Optional[list[str]] = None, # colunas a serem lidas
@@ -93,7 +94,7 @@ class CVMClient:
         sep: Optional[str] = ";",
         encoding: Optional[str] = "latin1",
     ) -> pd.DataFrame | Iterator[pd.DataFrame]:
-        """Essa função carrega um CSV de demonstrativo (ex.: DRE CON) para o ano informado.
+        """Essa função carrega um CSV de demonstrativo (ex.: DRE CON / BPA CON) para o ano informado.
 
         Args:
             ano (int): Ano para o arquivo DFP/ITR/DRE.
@@ -130,12 +131,12 @@ class CVMClient:
 
         Requer que os arquivos já estejam presentes em `path_data_dir`.
         """
-        csv_path = self._find_csv_path(DocType.DFP, statement, scope, ano)
+        csv_path = self._find_csv_path(doc_type, statement, scope, ano)
 
         reader = CSVReader.read_csv(
             csv_path,
             chunksize=chunksize if chunks else None,
-            cols=cols,
+            usecols=cols,
             statement=statement,
             encoding=encoding,
             sep=sep,

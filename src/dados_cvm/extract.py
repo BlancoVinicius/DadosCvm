@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import os
 from pathlib import Path
 from typing import List
 import zipfile
@@ -23,6 +22,16 @@ class ZipExtractor:
         """Extrai com segurança todos os arquivos do zip para dest_dir.
 
         Protege contra path traversal garantindo que nenhum membro escape de dest_dir.
+
+        Args:
+            zip_bytes: BytesIO com o conteúdo do zip.
+            dest_dir: Diretório para onde os arquivos serão extraídos.
+
+        Returns:
+            None
+            
+        Raises:
+            RuntimeError: se houver path traversal detectado.
         """
         dest = Path(dest_dir)
         dest.mkdir(parents=True, exist_ok=True)

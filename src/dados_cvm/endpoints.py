@@ -72,7 +72,7 @@ class UrlBuilder:
     BASE_URL: Final[str] = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/{TIPO}/DADOS/{tipo}_cia_aberta_{ANO}.zip"
 
     @classmethod
-    def build_zip_url(cls, doc_type: DocType, ano: int, url_base:BASE_URL) -> str:
+    def build_zip_url(cls, doc_type: DocType, ano: int) -> str:
         """Monta a URL do ZIP para o tipo de documento e ano informados.
 
         Args:
