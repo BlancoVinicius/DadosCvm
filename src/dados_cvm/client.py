@@ -84,7 +84,7 @@ class CVMClient:
     def load_statement(
         self,
         ano: int,
-        statement: StatementType, # tipo do demonstrativo (ex.: DRE)
+        statement: StatementType, # Qual demonstrativo (ex.: BPA, BPP, DRE ...)
         scope: Scope, # escopo do demonstrativo (ex.: CON, IND)
         doc_type: DocType, # tipo do demonstrativo (ex.: DFP, ITR)
         chunks: bool = False,
