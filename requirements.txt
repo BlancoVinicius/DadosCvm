@@ -1,5 +1,2 @@
 requests
-zipfile
-io
-os
 pandas
